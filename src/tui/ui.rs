@@ -3,11 +3,11 @@
 
 use crate::tui::app::TuiApp;
 use ratatui::{
-    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Paragraph, Wrap},
+    Frame,
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -88,7 +88,7 @@ fn render_message_list(f: &mut Frame, app: &TuiApp, area: Rect) {
             Block::default()
                 .borders(Borders::ALL)
                 .title(title)
-                .border_style(Style::default().fg(Color::White)),
+                .border_style(Style::default()),
         )
         .wrap(Wrap { trim: false });
 
@@ -157,7 +157,7 @@ fn render_input_box(f: &mut Frame, app: &TuiApp, area: Rect) {
                 .title(" Input (Enter: send | ↑↓: scroll | Ctrl+R: toggle raw | Ctrl+C: exit) ")
                 .border_style(Style::default().fg(Color::Green)),
         )
-        .style(Style::default().fg(Color::White));
+        .style(Style::default());
 
     f.render_widget(paragraph, area);
 
