@@ -619,6 +619,7 @@ mod tests {
     use super::*;
     use crate::client::models::BiliMessage;
     use crate::client::scheduler::EventHandler;
+    use crate::models::DanmuUser;
 
     #[test]
     fn test_tts_handler_danmu() {
@@ -627,7 +628,7 @@ mod tests {
 
         let text = "您好，欢迎来到直播间。".to_string();
         let msg = BiliMessage::Danmu {
-            user: "测试用户".to_string(),
+            user: DanmuUser::new("测试用户"),
             text: text.clone(),
         };
         let context = EventContext {
@@ -649,7 +650,7 @@ mod tests {
         );
 
         let msg = BiliMessage::Danmu {
-            user: "test_user".to_string(),
+            user: DanmuUser::new("test_user"),
             text: "hello world".to_string(),
         };
         let context = EventContext {
@@ -675,7 +676,7 @@ mod tests {
 
         for (user, text) in messages {
             let msg = BiliMessage::Danmu {
-                user: user.to_string(),
+                user: DanmuUser::new(user),
                 text: text.to_string(),
             };
             let context = EventContext {
@@ -698,7 +699,7 @@ mod tests {
         let handler = TtsHandler::new_command("echo".to_string(), vec![]);
 
         let msg = BiliMessage::Danmu {
-            user: "test_user".to_string(),
+            user: DanmuUser::new("test_user"),
             text: "test message".to_string(),
         };
         let context = EventContext {
@@ -720,7 +721,7 @@ mod tests {
         );
 
         let msg = BiliMessage::Danmu {
-            user: "用户".to_string(),
+            user: DanmuUser::new("用户"),
             text: "你好".to_string(),
         };
         let context = EventContext {
@@ -739,7 +740,7 @@ mod tests {
         );
 
         let msg = BiliMessage::Danmu {
-            user: "用户".to_string(),
+            user: DanmuUser::new("用户"),
             text: "你好".to_string(),
         };
         let context = EventContext {
@@ -773,7 +774,7 @@ mod tests {
             TtsHandler::new_rest_api_default_with_volume("http://localhost:8000".to_string(), 0.5);
 
         let msg = BiliMessage::Danmu {
-            user: "test_user".to_string(),
+            user: DanmuUser::new("test_user"),
             text: "volume test".to_string(),
         };
         let context = EventContext {
@@ -805,7 +806,7 @@ mod tests {
         let handler = TtsHandler::new_ali_tts_default("test_api_key".to_string());
 
         let msg = BiliMessage::Danmu {
-            user: "测试用户".to_string(),
+            user: DanmuUser::new("测试用户"),
             text: "你好".to_string(),
         };
         let context = EventContext {
@@ -826,7 +827,7 @@ mod tests {
         );
 
         let msg = BiliMessage::Danmu {
-            user: "test_user".to_string(),
+            user: DanmuUser::new("test_user"),
             text: "hello world".to_string(),
         };
         let context = EventContext {

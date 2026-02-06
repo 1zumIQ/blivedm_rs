@@ -2,7 +2,7 @@
 //! Data models for Bilibili live danmaku WebSocket client
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 #[derive(Debug)]
 pub struct DanmuServer {
@@ -58,12 +58,12 @@ impl AuthMessage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum BiliMessage {
     Danmu {
-        user: String,
+        user: DanmuUser,
         text: String,
     },
     Gift {
         user: String,
-        gift: String,
+        gift: GiftData,
     },
     /// Online rank count message (ONLINE_RANK_COUNT)
     OnlineRankCount {
@@ -76,6 +76,74 @@ pub enum BiliMessage {
     Raw(serde_json::Value),
     #[deprecated(note = "Use Raw variant instead")]
     Unsupported,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum CoinType{
+    #[default]
+    Silver,
+    Gold,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+pub struct GiftData{
+    #[serde(rename = "giftName")]
+    pub gift_name: String,
+    pub uname: String,
+    pub uid: u64,
+    pub num: i64,
+    pub price: i64,
+    pub coin_type: CoinType,
+    pub medal_info: Option<Medal>,
+    pub medal: Option<Medal>,
+}
+
+impl Display for GiftData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}个{}", self.num, self.gift_name)
+    }
+    
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+pub struct Medal{
+    #[serde(alias = "medal_name")]
+    pub name: String,
+    #[serde(alias = "medal_level")]
+    pub level: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct DanmuUser {
+    pub uid: u64,
+    pub base: UserBase,
+    pub medal: Option<Medal>,
+}
+
+impl DanmuUser {
+    pub fn new(name: &str) -> Self {
+        DanmuUser {
+            uid: 0,
+            base: UserBase {
+                name: name.to_string(),
+            },
+            medal: None,
+        }
+    }
+}
+
+impl Display for DanmuUser {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.base.name)
+    }
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct UserBase {
+    pub name: String,
 }
 
 #[cfg(test)]

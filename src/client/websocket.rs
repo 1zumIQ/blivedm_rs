@@ -13,7 +13,7 @@ use http::Response;
 use std::collections::HashMap;
 
 use crate::auth::*;
-use crate::models::{AuthMessage, BiliMessage, DanmuServer, MsgHead};
+use crate::models::{AuthMessage, BiliMessage, DanmuServer, GiftData, MsgHead};
 
 pub struct BiliLiveClient {
     ws: WebSocket<TlsStream<TcpStream>>,
@@ -304,23 +304,20 @@ pub fn decompress(body: &[u8]) -> std::io::Result<Vec<u8>> {
 
 /// here we detail [info format is online](https://github.com/SocialSisterYi/bilibili-API-collect/blob/master/docs/live/message_stream.md)
 /// .
-pub fn handle(json: Value) -> Option<BiliMessage> {
+pub fn handle(mut json: Value) -> Option<BiliMessage> {
     let category = json["cmd"].as_str().unwrap_or("");
     match category {
         "DANMU_MSG" => Some(BiliMessage::Danmu {
-            user: json["info"][2][1]
-                .as_str()
-                .unwrap_or("<unknown>")
-                .to_string(),
+            user: serde_json::from_value(json["info"][0][15]["user"].take()).unwrap_or_default(),
             text: json["info"][1].as_str().unwrap_or("").to_string(),
         }),
-        "SEND_GIFT" => Some(BiliMessage::Gift {
-            user: json["info"][2][1]
-                .as_str()
-                .unwrap_or("<unknown>")
-                .to_string(),
-            gift: json["info"][1].as_str().unwrap_or("").to_string(),
-        }),
+        "SEND_GIFT" => {
+            let gift_data: GiftData = serde_json::from_value(json["data"].take()).unwrap_or_default();
+            Some(BiliMessage::Gift {
+                user: gift_data.uname.clone(),
+                gift: gift_data,
+            })
+        },
         "ONLINE_RANK_COUNT" => Some(BiliMessage::OnlineRankCount {
             count: json["data"]["count"].as_u64().unwrap_or(0),
             online_count: json["data"]["online_count"].as_u64().unwrap_or(0),

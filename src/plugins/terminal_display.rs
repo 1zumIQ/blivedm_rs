@@ -65,6 +65,7 @@ mod tests {
     use super::*;
     use crate::client::models::BiliMessage;
     use crate::client::scheduler::EventHandler;
+    use crate::models::GiftData;
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
 
@@ -93,7 +94,7 @@ mod tests {
         let handler = TerminalDisplayHandler::new(Arc::clone(&buffer));
         let msg = BiliMessage::Gift {
             user: "gift_user".to_string(),
-            gift: "rocket".to_string(),
+            gift: GiftData::default(),
         };
         let context = EventContext {
             cookies: None,
@@ -103,7 +104,7 @@ mod tests {
 
         let messages = buffer.lock().unwrap();
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0], "[Gift] gift_user sent a gift: rocket");
+        assert_eq!(messages[0], format!("[Gift] gift_user sent a gift: {:?}", GiftData::default()));
     }
 
     #[test]
