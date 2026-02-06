@@ -6,9 +6,9 @@ pub mod plugins;
 pub mod tui;
 
 // Re-export commonly used items from client
-pub use client::{auth, get_cookies_or_browser, models, scheduler, websocket};
 #[cfg(feature = "browser_cookies")]
 pub use client::browser_cookies;
+pub use client::{auth, get_cookies_or_browser, models, scheduler, websocket};
 
 // Re-export plugin modules and helpers
 pub use plugins::{

@@ -80,14 +80,14 @@ pub enum BiliMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
-pub enum CoinType{
+pub enum CoinType {
     #[default]
     Silver,
     Gold,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
-pub struct GiftData{
+pub struct GiftData {
     #[serde(rename = "giftName")]
     pub gift_name: String,
     pub uname: String,
@@ -103,12 +103,10 @@ impl Display for GiftData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}个{}", self.num, self.gift_name)
     }
-    
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct Medal{
+pub struct Medal {
     #[serde(alias = "medal_name")]
     pub name: String,
     #[serde(alias = "medal_level")]
@@ -139,7 +137,6 @@ impl Display for DanmuUser {
         write!(f, "{}", self.base.name)
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub struct UserBase {

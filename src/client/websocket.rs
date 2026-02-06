@@ -312,12 +312,13 @@ pub fn handle(mut json: Value) -> Option<BiliMessage> {
             text: json["info"][1].as_str().unwrap_or("").to_string(),
         }),
         "SEND_GIFT" => {
-            let gift_data: GiftData = serde_json::from_value(json["data"].take()).unwrap_or_default();
+            let gift_data: GiftData =
+                serde_json::from_value(json["data"].take()).unwrap_or_default();
             Some(BiliMessage::Gift {
                 user: gift_data.uname.clone(),
                 gift: gift_data,
             })
-        },
+        }
         "ONLINE_RANK_COUNT" => Some(BiliMessage::OnlineRankCount {
             count: json["data"]["count"].as_u64().unwrap_or(0),
             online_count: json["data"]["online_count"].as_u64().unwrap_or(0),

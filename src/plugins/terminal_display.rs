@@ -104,7 +104,14 @@ mod tests {
 
         let messages = buffer.lock().unwrap();
         assert_eq!(messages.len(), 1);
-        assert_eq!(messages[0], format!("[Gift] {} sent a gift: {}", "gift_user", GiftData::default()));
+        assert_eq!(
+            messages[0],
+            format!(
+                "[Gift] {} sent a gift: {}",
+                "gift_user",
+                GiftData::default()
+            )
+        );
     }
 
     #[test]

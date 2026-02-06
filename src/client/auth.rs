@@ -29,7 +29,7 @@ pub fn get_cookies_or_browser(provided_cookie: Option<&str>) -> Option<String> {
     {
         log::debug!("Browser cookie feature not enabled. Skip to find cookies in browser...");
     }
-    
+
     if let Some(cookie) = provided_cookie {
         if !cookie.is_empty() && cookie != "dummy_sessdata" && cookie.len() > 20 {
             log::info!("Using provided cookie as fallback");
