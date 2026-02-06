@@ -89,7 +89,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::models::BiliMessage;
+    use crate::models::{BiliMessage, DanmuUser};
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex, mpsc};
 
@@ -123,7 +123,7 @@ mod tests {
 
         // Send a test message
         let test_msg = BiliMessage::Danmu {
-            user: "user1".to_string(),
+            user: DanmuUser::new("test_user"),
             text: "hello".to_string(),
         };
         tx.send(test_msg.clone()).unwrap();
@@ -178,7 +178,7 @@ mod tests {
         scheduler.add_sequential_handler(handler3);
 
         let test_msg = BiliMessage::Danmu {
-            user: "user2".to_string(),
+            user: DanmuUser::new("user2"),
             text: "test".to_string(),
         };
         scheduler.trigger(test_msg);

@@ -16,6 +16,7 @@
 // let tts_handler = tts_handler_default("http://localhost:8000".to_string());
 use blivedm::client::models::BiliMessage;
 use blivedm::client::scheduler::{EventContext, Scheduler};
+use blivedm::models::DanmuUser;
 use blivedm::plugins::{tts_handler_command, tts_handler_default};
 
 fn main() {
@@ -49,11 +50,11 @@ fn test_rest_api_mode() {
     // Simulate some danmu messages for REST API
     let messages = vec![
         BiliMessage::Danmu {
-            user: "观众1".to_string(),
+            user: DanmuUser::new("观众1"),
             text: "REST API 模式测试".to_string(),
         },
         BiliMessage::Danmu {
-            user: "观众2".to_string(),
+            user: DanmuUser::new("观众2"),
             text: "神经网络语音合成".to_string(),
         },
     ];
@@ -96,11 +97,11 @@ fn test_command_mode() {
     // Simulate some danmu messages for command-line TTS
     let messages = vec![
         BiliMessage::Danmu {
-            user: "观众3".to_string(),
+            user: DanmuUser::new("观众3"),
             text: "命令行模式测试".to_string(),
         },
         BiliMessage::Danmu {
-            user: "观众4".to_string(),
+            user: DanmuUser::new("观众4"),
             text: "本地语音合成".to_string(),
         },
     ];

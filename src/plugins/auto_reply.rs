@@ -386,6 +386,7 @@ mod tests {
     use super::*;
     use crate::client::models::BiliMessage;
     use crate::client::scheduler::{EventContext, EventHandler};
+    use crate::models::DanmuUser;
 
     #[test]
     fn test_keyword_matching() {
@@ -468,7 +469,7 @@ mod tests {
         };
 
         let msg = BiliMessage::Danmu {
-            user: "test_user".to_string(),
+            user: DanmuUser::new("test_user"),
             text: "this is a test message".to_string(),
         };
 
