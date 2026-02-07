@@ -1,4 +1,5 @@
 // In Cargo.toml, ensure you have: client = { path = "../client" }
+use async_trait::async_trait;
 use models::BiliMessage;
 use std::sync::Arc;
 
@@ -27,8 +28,9 @@ impl EventContext {
 }
 
 /// Trait for event handlers (plugins) that process BiliMessage.
+#[async_trait]
 pub trait EventHandler: Send + Sync {
-    fn handle(&self, msg: &BiliMessage, context: &EventContext);
+    async fn handle(&self, msg: &BiliMessage, context: &EventContext);
 }
 
 /// Scheduling mode: Parallel or Sequential.
@@ -64,20 +66,20 @@ impl Scheduler {
     }
 
     /// Trigger all stages with the given BiliMessage.
-    pub fn trigger(&self, msg: BiliMessage) {
+    pub async fn trigger(&self, msg: BiliMessage) {
         for stage in &self.stages {
-            let mut handles = vec![];
+            let mut handles = Vec::with_capacity(stage.len());
             for handler in stage {
                 let msg = msg.clone();
                 let context = self.context.clone();
                 let handler = Arc::clone(handler);
-                handles.push(std::thread::spawn(move || {
-                    handler.handle(&msg, &context);
+                handles.push(tokio::spawn(async move {
+                    handler.handle(&msg, &context).await;
                 }));
             }
-            // Wait for all handlers in this stage to finish before next stage
+
             for handle in handles {
-                let _ = handle.join();
+                let _ = handle.await;
             }
         }
     }
@@ -89,6 +91,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
     use crate::models::{BiliMessage, DanmuUser};
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::{Arc, Mutex, mpsc};
@@ -97,16 +100,18 @@ mod tests {
         called: Arc<AtomicBool>,
         last_msg: Arc<Mutex<Option<BiliMessage>>>,
     }
+
+    #[async_trait]
     impl super::EventHandler for AssertHandler {
-        fn handle(&self, msg: &BiliMessage, _context: &super::EventContext) {
+        async fn handle(&self, msg: &BiliMessage, _context: &super::EventContext) {
             self.called.store(true, Ordering::SeqCst);
-            let mut lock = self.last_msg.lock().unwrap();
+            let mut lock = self.last_msg.lock().expect("handler lock should be valid");
             *lock = Some(msg.clone());
         }
     }
 
-    #[test]
-    fn test_scheduler_with_mpsc_channel() {
+    #[tokio::test]
+    async fn test_scheduler_with_mpsc_channel() {
         let (tx, rx) = mpsc::channel();
         let called = Arc::new(AtomicBool::new(false));
         let last_msg = Arc::new(Mutex::new(None));
@@ -126,29 +131,32 @@ mod tests {
             user: DanmuUser::new("test_user"),
             text: "hello".to_string(),
         };
-        tx.send(test_msg.clone()).unwrap();
+        tx.send(test_msg.clone())
+            .expect("mpsc send for test message should succeed");
 
         // Simulate receiving and triggering
         if let Ok(msg) = rx.recv() {
-            scheduler.trigger(msg);
+            scheduler.trigger(msg).await;
         }
 
         // Assert handler was called and message matches
         assert!(called.load(Ordering::SeqCst), "Handler was not called");
-        let lock = last_msg.lock().unwrap();
+        let lock = last_msg.lock().expect("test lock should be valid");
         assert!(lock.is_some(), "No message stored in handler");
-        assert_eq!(lock.as_ref().unwrap(), &test_msg, "Message does not match");
+        assert_eq!(lock.as_ref().expect("message should exist"), &test_msg);
     }
 
-    #[test]
-    fn test_scheduler_add_stage_and_sequential_handler() {
+    #[tokio::test]
+    async fn test_scheduler_add_stage_and_sequential_handler() {
         use crate::models::BiliMessage;
 
         struct CounterHandler {
             counter: Arc<AtomicUsize>,
         }
+
+        #[async_trait]
         impl super::EventHandler for CounterHandler {
-            fn handle(&self, _msg: &BiliMessage, _context: &super::EventContext) {
+            async fn handle(&self, _msg: &BiliMessage, _context: &super::EventContext) {
                 self.counter.fetch_add(1, Ordering::SeqCst);
             }
         }
@@ -181,7 +189,7 @@ mod tests {
             user: DanmuUser::new("user2"),
             text: "test".to_string(),
         };
-        scheduler.trigger(test_msg);
+        scheduler.trigger(test_msg).await;
 
         // Both handler1 and handler2 should be called once (parallel stage)
         assert_eq!(counter1.load(Ordering::SeqCst), 1, "Handler1 not called");

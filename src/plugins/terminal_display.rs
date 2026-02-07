@@ -1,5 +1,6 @@
 use crate::client::models::BiliMessage;
 use crate::client::scheduler::{EventContext, EventHandler};
+use async_trait::async_trait;
 use std::collections::VecDeque;
 use std::sync::atomic::AtomicU64;
 use std::sync::{Arc, Mutex};
@@ -33,8 +34,9 @@ impl TerminalDisplayHandler {
     }
 }
 
+#[async_trait]
 impl EventHandler for TerminalDisplayHandler {
-    fn handle(&self, msg: &BiliMessage, _context: &EventContext) {
+    async fn handle(&self, msg: &BiliMessage, _context: &EventContext) {
         let formatted_msg = match msg {
             BiliMessage::Danmu { user, text } => {
                 format!("[Danmu] {}: {}", user, text)
@@ -69,8 +71,8 @@ mod tests {
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
 
-    #[test]
-    fn test_terminal_display_handler_adds_danmu() {
+    #[tokio::test]
+    async fn test_terminal_display_handler_adds_danmu() {
         let buffer = Arc::new(Mutex::new(VecDeque::new()));
         let handler = TerminalDisplayHandler::new(Arc::clone(&buffer));
         let msg = BiliMessage::Danmu {
@@ -81,15 +83,15 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
 
         let messages = buffer.lock().unwrap();
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0], "[Danmu] test_user: hello world");
     }
 
-    #[test]
-    fn test_terminal_display_handler_adds_gift() {
+    #[tokio::test]
+    async fn test_terminal_display_handler_adds_gift() {
         let buffer = Arc::new(Mutex::new(VecDeque::new()));
         let handler = TerminalDisplayHandler::new(Arc::clone(&buffer));
         let msg = BiliMessage::Gift {
@@ -100,7 +102,7 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
 
         let messages = buffer.lock().unwrap();
         assert_eq!(messages.len(), 1);
@@ -114,8 +116,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_terminal_display_handler_adds_unsupported() {
+    #[tokio::test]
+    async fn test_terminal_display_handler_adds_unsupported() {
         let buffer = Arc::new(Mutex::new(VecDeque::new()));
         let handler = TerminalDisplayHandler::new(Arc::clone(&buffer));
         let msg = BiliMessage::Unsupported;
@@ -123,7 +125,7 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
 
         let messages = buffer.lock().unwrap();
         assert_eq!(messages.len(), 1);

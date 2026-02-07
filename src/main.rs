@@ -432,7 +432,7 @@ fn main() {
     let rt_clone = Arc::clone(&rt);
     rt.spawn(async move {
         while let Some(msg) = rx.next().await {
-            scheduler.trigger(msg);
+            scheduler.trigger(msg).await;
         }
     });
 

@@ -1,5 +1,6 @@
 use crate::client::models::BiliMessage;
 use crate::client::scheduler::{EventContext, EventHandler};
+use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose};
 use log::{debug, error, info, warn};
 use rodio::{Decoder, OutputStream, Sink};
@@ -604,8 +605,9 @@ impl TtsHandler {
     }
 }
 
+#[async_trait]
 impl EventHandler for TtsHandler {
-    fn handle(&self, msg: &BiliMessage, _context: &EventContext) {
+    async fn handle(&self, msg: &BiliMessage, _context: &EventContext) {
         if let BiliMessage::Danmu { user, text } = msg {
             let message = format!("{}说：{}", user, text);
             // Send message to the queue for sequential processing
@@ -621,8 +623,8 @@ mod tests {
     use crate::client::scheduler::EventHandler;
     use crate::models::DanmuUser;
 
-    #[test]
-    fn test_tts_handler_danmu() {
+    #[tokio::test]
+    async fn test_tts_handler_danmu() {
         // Test with a mock server URL (won't actually make requests in this test)
         let handler = TtsHandler::new_rest_api_default("http://localhost:8000".to_string());
 
@@ -635,11 +637,11 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 
-    #[test]
-    fn test_tts_handler_custom_config() {
+    #[tokio::test]
+    async fn test_tts_handler_custom_config() {
         let handler = TtsHandler::new_rest_api(
             "http://localhost:8000".to_string(),
             Some("zh-CN-XiaoxiaoNeural".to_string()),
@@ -657,11 +659,11 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 
-    #[test]
-    fn test_tts_handler_sequential_processing() {
+    #[tokio::test]
+    async fn test_tts_handler_sequential_processing() {
         use std::time::Duration;
 
         // Use default configuration for testing
@@ -683,7 +685,7 @@ mod tests {
                 cookies: None,
                 room_id: 12345,
             };
-            handler.handle(&msg, &context);
+            handler.handle(&msg, &context).await;
         }
 
         // Give the worker thread some time to process the queue
@@ -693,8 +695,8 @@ mod tests {
         // is ensured by the worker thread design
     }
 
-    #[test]
-    fn test_tts_handler_command_mode() {
+    #[tokio::test]
+    async fn test_tts_handler_command_mode() {
         // Test command-based TTS (cross-platform using echo)
         let handler = TtsHandler::new_command("echo".to_string(), vec![]);
 
@@ -706,15 +708,15 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
 
         // Give the worker thread some time to process the message
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
 
     #[cfg(target_os = "macos")]
-    #[test]
-    fn test_tts_handler_macos_voice() {
+    #[tokio::test]
+    async fn test_tts_handler_macos_voice() {
         let handler = TtsHandler::new_command(
             "say".to_string(),
             vec!["-v".to_string(), "Mei-Jia".to_string()],
@@ -728,12 +730,12 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 
     #[cfg(target_os = "linux")]
-    #[test]
-    fn test_tts_handler_linux_voice() {
+    #[tokio::test]
+    async fn test_tts_handler_linux_voice() {
         let handler = TtsHandler::new_command(
             "espeak-ng".to_string(),
             vec!["-v".to_string(), "cmn".to_string()],
@@ -747,7 +749,7 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 
     #[test]
@@ -767,8 +769,8 @@ mod tests {
         assert!(json.contains("edge"));
     }
 
-    #[test]
-    fn test_tts_handler_with_volume() {
+    #[tokio::test]
+    async fn test_tts_handler_with_volume() {
         // Test with custom volume setting
         let handler =
             TtsHandler::new_rest_api_default_with_volume("http://localhost:8000".to_string(), 0.5);
@@ -781,7 +783,7 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
 
         // Test with custom configuration including volume
         let handler_custom = TtsHandler::new_rest_api_with_volume(
@@ -797,11 +799,11 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler_custom.handle(&msg, &context);
+        handler_custom.handle(&msg, &context).await;
     }
 
-    #[test]
-    fn test_ali_tts_handler_default() {
+    #[tokio::test]
+    async fn test_ali_tts_handler_default() {
         // Test with a mock API key (won't actually make requests in this test)
         let handler = TtsHandler::new_ali_tts_default("test_api_key".to_string());
 
@@ -813,11 +815,11 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 
-    #[test]
-    fn test_ali_tts_handler_custom_config() {
+    #[tokio::test]
+    async fn test_ali_tts_handler_custom_config() {
         let handler = TtsHandler::new_ali_tts(
             "test_api_key".to_string(),
             "qwen3-tts-flash".to_string(),
@@ -834,7 +836,7 @@ mod tests {
             cookies: None,
             room_id: 12345,
         };
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 
     #[test]

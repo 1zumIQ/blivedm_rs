@@ -1,5 +1,6 @@
 use crate::client::models::BiliMessage;
 use crate::client::scheduler::{EventContext, EventHandler};
+use async_trait::async_trait;
 use log::{debug, error, info, warn};
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::Serialize;
@@ -325,8 +326,9 @@ impl AutoReplyHandler {
     }
 }
 
+#[async_trait]
 impl EventHandler for AutoReplyHandler {
-    fn handle(&self, msg: &BiliMessage, context: &EventContext) {
+    async fn handle(&self, msg: &BiliMessage, context: &EventContext) {
         if !self.config.enabled {
             return;
         }
@@ -451,8 +453,8 @@ mod tests {
         assert_eq!(csrf, None);
     }
 
-    #[test]
-    fn test_event_handler() {
+    #[tokio::test]
+    async fn test_event_handler() {
         let config = AutoReplyConfig {
             enabled: true,
             cooldown_seconds: 0, // No cooldown for testing
@@ -474,6 +476,6 @@ mod tests {
         };
 
         // This should trigger the auto reply (but won't actually send due to test environment)
-        handler.handle(&msg, &context);
+        handler.handle(&msg, &context).await;
     }
 }

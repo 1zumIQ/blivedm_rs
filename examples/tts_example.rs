@@ -19,21 +19,22 @@ use blivedm::client::scheduler::{EventContext, Scheduler};
 use blivedm::models::DanmuUser;
 use blivedm::plugins::{tts_handler_command, tts_handler_default};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("TTS Example - Testing both REST API and Command modes");
 
     // Example 1: REST API Mode
     println!("\n=== Testing REST API Mode ===");
-    test_rest_api_mode();
+    test_rest_api_mode().await;
 
     // Example 2: Command Mode
     println!("\n=== Testing Command Mode ===");
-    test_command_mode();
+    test_command_mode().await;
 
     println!("\nTTS example completed!");
 }
 
-fn test_rest_api_mode() {
+async fn test_rest_api_mode() {
     // Create scheduler for REST API TTS
     let context = EventContext {
         cookies: None,
@@ -61,14 +62,14 @@ fn test_rest_api_mode() {
 
     // Trigger the messages - each will be converted to speech and played sequentially
     for msg in messages {
-        scheduler.trigger(msg);
+        scheduler.trigger(msg).await;
     }
 
     // Give time for TTS processing and audio playback
     std::thread::sleep(std::time::Duration::from_secs(6));
 }
 
-fn test_command_mode() {
+async fn test_command_mode() {
     // Create scheduler for command-line TTS
     let context = EventContext {
         cookies: None,
@@ -108,7 +109,7 @@ fn test_command_mode() {
 
     // Trigger the messages
     for msg in messages {
-        scheduler.trigger(msg);
+        scheduler.trigger(msg).await;
     }
 
     // Give time for command execution

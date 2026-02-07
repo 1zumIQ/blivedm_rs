@@ -30,6 +30,7 @@ browser_cookies = ["dep:sqlite", "dep:directories", "dep:chrono"]
 futures = "0.3"
 futures-channel = "0.3.28"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+async-trait = "0.1"
 
 # Logging
 log = "0.4"
