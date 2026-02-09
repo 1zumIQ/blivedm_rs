@@ -29,6 +29,7 @@ struct TtsRequest {
 #[derive(Deserialize, Debug)]
 struct TtsResponse {
     audio_data: String,
+    #[allow(dead_code)]
     metadata: TtsMetadata,
     #[allow(dead_code)]
     cached: bool,
@@ -41,6 +42,7 @@ struct TtsMetadata {
     #[allow(dead_code)]
     #[serde(skip_serializing_if = "Option::is_none")]
     voice: Option<String>,
+    #[allow(dead_code)]
     #[serde(skip_serializing_if = "Option::is_none")]
     duration: Option<f64>,
     #[allow(dead_code)]
