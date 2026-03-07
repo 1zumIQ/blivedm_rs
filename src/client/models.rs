@@ -87,6 +87,11 @@ pub enum CoinType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+pub struct GiftSenderUserInfo {
+    pub medal: Option<Medal>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
 pub struct GiftData {
     #[serde(rename = "giftName")]
     pub gift_name: String,
@@ -96,7 +101,7 @@ pub struct GiftData {
     pub price: i64,
     pub coin_type: CoinType,
     pub medal_info: Option<Medal>,
-    pub medal: Option<Medal>,
+    pub sender_uinfo: Option<GiftSenderUserInfo>,
 }
 
 impl Display for GiftData {
