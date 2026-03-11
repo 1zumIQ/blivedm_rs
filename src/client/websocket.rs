@@ -83,7 +83,7 @@ impl BiliLiveClient {
             body[2] = resv[18];
             body[3] = resv[19];
             let popularity = i32::from_be_bytes(body);
-            log::info!("popularity:{}", popularity);
+            log::debug!("popularity:{}", popularity);
         } else {
             log::error!(
                 "unknown message operation={:?}, header={:?}}}",
