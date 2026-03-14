@@ -76,7 +76,7 @@ jobs:
             echo "" >> $GITHUB_ENV
             echo "## 📝 Changes since $PREVIOUS_TAG" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
-            git log --pretty=format:"* %s (%an) [%h](https://github.com/${{ github.repository }}/commit/%H)" $PREVIOUS_TAG..$CURRENT_TAG >> $GITHUB_ENV
+            git log --pretty=format:"* %s (@%an) [%h](https://github.com/${{ github.repository }}/commit/%H)" $PREVIOUS_TAG..$CURRENT_TAG >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
             echo "" >> $GITHUB_ENV
             echo "## 📚 Documentation" >> $GITHUB_ENV
