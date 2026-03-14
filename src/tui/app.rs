@@ -36,6 +36,28 @@ pub struct TuiApp {
     pub log_scroll_offset: usize,
     /// Whether auto-scroll is enabled for logs panel
     pub log_auto_scroll: bool,
+    /// Whether the help overlay is visible
+    pub show_help: bool,
+    /// Whether Vim-style visual selection is active
+    pub visual_mode: bool,
+    /// Frozen message snapshot used while visual mode is active
+    frozen_messages: Vec<String>,
+    /// Frozen log snapshot used while visual mode is active
+    frozen_logs: Vec<String>,
+    /// Rendered wrapped lines for the active pane
+    rendered_lines: Vec<String>,
+    /// First visible rendered line for the active pane
+    rendered_start_line: usize,
+    /// Visible height for the active pane
+    rendered_visible_height: usize,
+    /// Selection anchor in rendered line coordinates
+    visual_anchor: usize,
+    /// Current cursor in rendered line coordinates
+    visual_cursor: usize,
+    /// Current line cursor in normal pane navigation
+    pane_cursor: usize,
+    /// Whether the pane cursor has been initialized
+    pane_cursor_initialized: bool,
 }
 
 impl TuiApp {
@@ -64,6 +86,17 @@ impl TuiApp {
             show_logs: false,
             log_scroll_offset: 0,
             log_auto_scroll: true,
+            show_help: false,
+            visual_mode: false,
+            frozen_messages: Vec::new(),
+            frozen_logs: Vec::new(),
+            rendered_lines: Vec::new(),
+            rendered_start_line: 0,
+            rendered_visible_height: 0,
+            visual_anchor: 0,
+            visual_cursor: 0,
+            pane_cursor: 0,
+            pane_cursor_initialized: false,
         }
     }
 
@@ -81,7 +114,6 @@ impl TuiApp {
     pub fn add_message(buffer: &Arc<Mutex<VecDeque<String>>>, message: String) {
         if let Ok(mut messages) = buffer.lock() {
             messages.push_back(message);
-            // Keep buffer bounded
             while messages.len() > MAX_MESSAGES {
                 messages.pop_front();
             }
@@ -90,6 +122,10 @@ impl TuiApp {
 
     /// Get messages for display (returns a copy of the buffer)
     pub fn get_messages(&self) -> Vec<String> {
+        if self.visual_mode {
+            return self.frozen_messages.clone();
+        }
+
         if let Ok(messages) = self.message_buffer.lock() {
             messages.iter().cloned().collect()
         } else {
@@ -110,7 +146,6 @@ impl TuiApp {
     pub fn scroll_up(&mut self, amount: usize) {
         let max_offset = self.message_count().saturating_sub(1);
         self.scroll_offset = (self.scroll_offset + amount).min(max_offset);
-        // Disable auto-scroll when user scrolls up
         if self.scroll_offset > 0 {
             self.auto_scroll = false;
         }
@@ -119,7 +154,6 @@ impl TuiApp {
     /// Scroll down (decrease offset)
     pub fn scroll_down(&mut self, amount: usize) {
         self.scroll_offset = self.scroll_offset.saturating_sub(amount);
-        // Re-enable auto-scroll when scrolled to bottom
         if self.scroll_offset == 0 {
             self.auto_scroll = true;
         }
@@ -133,7 +167,6 @@ impl TuiApp {
 
     /// Handle character input
     pub fn enter_char(&mut self, c: char) {
-        // Get byte position from character position
         let byte_pos = self.byte_index();
         self.input.insert(byte_pos, c);
         self.cursor_position += 1;
@@ -142,7 +175,6 @@ impl TuiApp {
     /// Delete character before cursor
     pub fn delete_char(&mut self) {
         if self.cursor_position > 0 {
-            // Get the byte position of the character before cursor
             let byte_pos = self.byte_index_at(self.cursor_position - 1);
             self.input.remove(byte_pos);
             self.cursor_position -= 1;
@@ -164,7 +196,6 @@ impl TuiApp {
         }
     }
 
-    /// Get byte index for current cursor position (character-based)
     fn byte_index(&self) -> usize {
         self.input
             .char_indices()
@@ -173,7 +204,6 @@ impl TuiApp {
             .unwrap_or(self.input.len())
     }
 
-    /// Get byte index for a specific character position
     fn byte_index_at(&self, char_pos: usize) -> usize {
         self.input
             .char_indices()
@@ -203,11 +233,16 @@ impl TuiApp {
     /// Toggle logs panel visibility
     pub fn toggle_show_logs(&mut self) {
         self.show_logs = !self.show_logs;
-        // Reset log scroll when toggling
+        self.show_help = false;
         if self.show_logs {
             self.log_scroll_offset = 0;
             self.log_auto_scroll = true;
         }
+    }
+
+    /// Toggle help overlay visibility
+    pub fn toggle_help(&mut self) {
+        self.show_help = !self.show_help;
     }
 
     /// Get the number of log messages in buffer
@@ -249,10 +284,290 @@ impl TuiApp {
 
     /// Get log messages for display
     pub fn get_log_messages(&self) -> Vec<String> {
+        if self.visual_mode {
+            return self.frozen_logs.clone();
+        }
+
         if let Ok(logs) = self.log_buffer.lock() {
             logs.iter().cloned().collect()
         } else {
             Vec::new()
+        }
+    }
+
+    /// Store the current wrapped-line model for the active pane
+    pub fn set_rendered_lines(
+        &mut self,
+        lines: Vec<String>,
+        start_line: usize,
+        visible_height: usize,
+    ) -> usize {
+        let old_total_lines = self.rendered_lines.len();
+        let old_start_line = self.rendered_start_line;
+        let old_visible_height = self.rendered_visible_height.max(1);
+        let old_last_visible = old_start_line
+            .saturating_add(old_visible_height.saturating_sub(1))
+            .min(old_total_lines.saturating_sub(1));
+        let was_following_bottom = self.pane_cursor_initialized
+            && old_total_lines > 0
+            && self.pane_cursor >= old_last_visible
+            && self.active_auto_scroll();
+
+        self.rendered_lines = lines;
+        self.rendered_start_line = start_line;
+        self.rendered_visible_height = visible_height.max(1);
+
+        if self.visual_mode {
+            let max_index = self.rendered_lines.len().saturating_sub(1);
+            self.visual_anchor = self.visual_anchor.min(max_index);
+            self.visual_cursor = self.visual_cursor.min(max_index);
+            self.sync_visual_view();
+        } else if self.rendered_lines.is_empty() {
+            self.pane_cursor = 0;
+            self.pane_cursor_initialized = false;
+        } else {
+            let max_index = self.rendered_lines.len() - 1;
+            if !self.pane_cursor_initialized || was_following_bottom {
+                self.pane_cursor = self.initial_visible_cursor();
+                self.pane_cursor_initialized = true;
+            } else {
+                self.pane_cursor = self.pane_cursor.min(max_index);
+                self.sync_pane_view();
+            }
+        }
+
+        self.rendered_start_line
+    }
+
+    /// Enter Vim-style visual selection mode
+    pub fn enter_visual_mode(&mut self) {
+        if self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        self.frozen_messages = self
+            .message_buffer
+            .lock()
+            .map(|messages| messages.iter().cloned().collect())
+            .unwrap_or_default();
+        self.frozen_logs = self
+            .log_buffer
+            .lock()
+            .map(|logs| logs.iter().cloned().collect())
+            .unwrap_or_default();
+        self.show_help = false;
+        self.visual_mode = true;
+        self.visual_cursor = self.pane_cursor;
+        self.visual_anchor = self.visual_cursor;
+        self.sync_visual_view();
+    }
+
+    /// Exit visual selection mode and resume live updates
+    pub fn exit_visual_mode(&mut self) {
+        self.visual_mode = false;
+        self.frozen_messages.clear();
+        self.frozen_logs.clear();
+    }
+
+    /// Toggle visual selection mode
+    pub fn toggle_visual_mode(&mut self) {
+        if self.visual_mode {
+            self.exit_visual_mode();
+        } else {
+            self.enter_visual_mode();
+        }
+    }
+
+    /// Move the normal pane cursor up
+    pub fn pane_up(&mut self, amount: usize) {
+        if self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        self.pane_cursor = self.pane_cursor.saturating_sub(amount);
+        self.sync_pane_view();
+    }
+
+    /// Move the normal pane cursor down
+    pub fn pane_down(&mut self, amount: usize) {
+        if self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        let max_index = self.rendered_lines.len().saturating_sub(1);
+        self.pane_cursor = (self.pane_cursor + amount).min(max_index);
+        self.sync_pane_view();
+    }
+
+    /// Jump the normal pane cursor to the first line
+    pub fn pane_top(&mut self) {
+        if self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        self.pane_cursor = 0;
+        self.sync_pane_view();
+    }
+
+    /// Jump the normal pane cursor to the last line
+    pub fn pane_bottom(&mut self) {
+        if self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        self.pane_cursor = self.rendered_lines.len() - 1;
+        self.sync_pane_view();
+    }
+
+    /// Move the visual cursor up
+    pub fn visual_up(&mut self, amount: usize) {
+        if !self.visual_mode {
+            return;
+        }
+
+        self.visual_cursor = self.visual_cursor.saturating_sub(amount);
+        self.sync_visual_view();
+    }
+
+    /// Move the visual cursor down
+    pub fn visual_down(&mut self, amount: usize) {
+        if !self.visual_mode {
+            return;
+        }
+
+        let max_index = self.rendered_lines.len().saturating_sub(1);
+        self.visual_cursor = (self.visual_cursor + amount).min(max_index);
+        self.sync_visual_view();
+    }
+
+    /// Jump the visual cursor to the first line
+    pub fn visual_top(&mut self) {
+        if !self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        self.visual_cursor = 0;
+        self.sync_visual_view();
+    }
+
+    /// Jump the visual cursor to the last line
+    pub fn visual_bottom(&mut self) {
+        if !self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        self.visual_cursor = self.rendered_lines.len() - 1;
+        self.sync_visual_view();
+    }
+
+    /// Get the selected rendered-line range
+    pub fn visual_range(&self) -> Option<(usize, usize)> {
+        if !self.visual_mode || self.rendered_lines.is_empty() {
+            return None;
+        }
+
+        Some((
+            self.visual_anchor.min(self.visual_cursor),
+            self.visual_anchor.max(self.visual_cursor),
+        ))
+    }
+
+    /// Get the current visual cursor position
+    pub fn visual_cursor(&self) -> Option<usize> {
+        if self.visual_mode && !self.rendered_lines.is_empty() {
+            Some(self.visual_cursor)
+        } else {
+            None
+        }
+    }
+
+    /// Get the current pane cursor position
+    pub fn pane_cursor(&self) -> Option<usize> {
+        if !self.visual_mode && self.pane_cursor_initialized && !self.rendered_lines.is_empty() {
+            Some(self.pane_cursor)
+        } else {
+            None
+        }
+    }
+
+    /// Return the selected text from the current visual range
+    pub fn selected_text(&self) -> Option<String> {
+        let (start, end) = self.visual_range()?;
+        Some(self.rendered_lines[start..=end].join("\n"))
+    }
+
+    fn initial_visible_cursor(&self) -> usize {
+        if self.rendered_lines.is_empty() {
+            return 0;
+        }
+
+        let last_visible = self
+            .rendered_start_line
+            .saturating_add(self.rendered_visible_height.saturating_sub(1));
+        last_visible.min(self.rendered_lines.len() - 1)
+    }
+
+    fn sync_pane_view(&mut self) {
+        if self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        let total_lines = self.rendered_lines.len();
+        let visible_height = self.rendered_visible_height.max(1).min(total_lines);
+        let max_start = total_lines.saturating_sub(visible_height);
+        let mut start_line = self.rendered_start_line.min(max_start);
+
+        if self.pane_cursor < start_line {
+            start_line = self.pane_cursor;
+        } else if self.pane_cursor >= start_line + visible_height {
+            start_line = self.pane_cursor + 1 - visible_height;
+        }
+
+        self.rendered_start_line = start_line;
+
+        let scroll_offset = total_lines.saturating_sub(visible_height + start_line);
+        if self.show_logs {
+            self.log_scroll_offset = scroll_offset;
+            self.log_auto_scroll = scroll_offset == 0;
+        } else {
+            self.scroll_offset = scroll_offset;
+            self.auto_scroll = scroll_offset == 0;
+        }
+    }
+
+    fn active_auto_scroll(&self) -> bool {
+        if self.show_logs {
+            self.log_auto_scroll
+        } else {
+            self.auto_scroll
+        }
+    }
+
+    fn sync_visual_view(&mut self) {
+        if !self.visual_mode || self.rendered_lines.is_empty() {
+            return;
+        }
+
+        let total_lines = self.rendered_lines.len();
+        let visible_height = self.rendered_visible_height.max(1).min(total_lines);
+        let max_start = total_lines.saturating_sub(visible_height);
+        let mut start_line = self.rendered_start_line.min(max_start);
+
+        if self.visual_cursor < start_line {
+            start_line = self.visual_cursor;
+        } else if self.visual_cursor >= start_line + visible_height {
+            start_line = self.visual_cursor + 1 - visible_height;
+        }
+
+        self.rendered_start_line = start_line;
+
+        let scroll_offset = total_lines.saturating_sub(visible_height + start_line);
+        if self.show_logs {
+            self.log_scroll_offset = scroll_offset;
+            self.log_auto_scroll = scroll_offset == 0;
+        } else {
+            self.scroll_offset = scroll_offset;
+            self.auto_scroll = scroll_offset == 0;
         }
     }
 }
