@@ -19,11 +19,19 @@ path = "src/lib.rs"
 name = "blivedm"
 path = "src/main.rs"
 
+[[example]]
+name = "tts_example"
+path = "examples/tts_example.rs"
+required-features = ["tts"]
+
 [features]
-default = ["browser_cookies"]
+default = ["browser_cookies", "tts"]
 
 ## Enable browser cookie parsing from Chrome/Edge/Firefox
 browser_cookies = ["dep:sqlite", "dep:directories", "dep:chrono"]
+
+## Enable the TTS plugin and its audio playback dependencies
+tts = ["dep:base64", "dep:rodio"]
 
 [dependencies]
 # Core async runtime
@@ -65,8 +73,8 @@ directories = { version = "5.0", optional = true }
 chrono = { version = "0.4", optional = true }
 
 # Plugin dependencies (TTS)
-base64 = "0.21"
-rodio = "0.17"
+base64 = { version = "0.21", optional = true }
+rodio = { version = "0.17", optional = true }
 
 # TUI dependencies
 ratatui = "0.29"

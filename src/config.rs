@@ -158,9 +158,8 @@ impl Config {
 
     /// Create an example configuration file
     pub fn create_example_config(path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        let example_config = Config {
-            connection: None,
-            tts: Some(TtsConfig {
+        let example_tts = if cfg!(feature = "tts") {
+            Some(TtsConfig {
                 server: Some("http://localhost:8000".to_string()),
                 voice: None,
                 backend: None,
@@ -174,7 +173,14 @@ impl Config {
                 ali_model: None,
                 ali_voice: None,
                 ali_language_type: None,
-            }),
+            })
+        } else {
+            None
+        };
+
+        let example_config = Config {
+            connection: None,
+            tts: example_tts,
             auto_reply: Some(AutoReplyConfig {
                 enabled: false,
                 cooldown_seconds: 5,
@@ -234,29 +240,55 @@ impl Config {
             println!("  cookies: None (will auto-detect)");
         }
 
-        println!("TTS (REST API):");
-        println!("  server: {:?}", tts_server);
-        println!("  voice: {:?}", tts_voice);
-        println!("  backend: {:?}", tts_backend);
-        println!("  quality: {:?}", tts_quality);
-        println!("  format: {:?}", tts_format);
-        println!("  sample_rate: {:?}", tts_sample_rate);
-        println!("  volume: {:?}", tts_volume);
-        println!("  command: {:?}", tts_command);
-        println!("  args: {:?}", tts_args);
+        #[cfg(feature = "tts")]
+        {
+            println!("TTS (REST API):");
+            println!("  server: {:?}", tts_server);
+            println!("  voice: {:?}", tts_voice);
+            println!("  backend: {:?}", tts_backend);
+            println!("  quality: {:?}", tts_quality);
+            println!("  format: {:?}", tts_format);
+            println!("  sample_rate: {:?}", tts_sample_rate);
+            println!("  volume: {:?}", tts_volume);
+            println!("  command: {:?}", tts_command);
+            println!("  args: {:?}", tts_args);
 
-        println!("TTS (Alibaba DashScope):");
-        if let Some(key) = ali_api_key {
-            println!(
-                "  api_key: {}...",
-                &key.chars().take(10).collect::<String>()
-            );
-        } else {
-            println!("  api_key: None");
+            println!("TTS (Alibaba DashScope):");
+            if let Some(key) = ali_api_key {
+                println!(
+                    "  api_key: {}...",
+                    &key.chars().take(10).collect::<String>()
+                );
+            } else {
+                println!("  api_key: None");
+            }
+            println!("  model: {:?}", ali_model);
+            println!("  voice: {:?}", ali_voice);
+            println!("  language_type: {:?}", ali_language_type);
         }
-        println!("  model: {:?}", ali_model);
-        println!("  voice: {:?}", ali_voice);
-        println!("  language_type: {:?}", ali_language_type);
+
+        #[cfg(not(feature = "tts"))]
+        {
+            let has_tts_settings = tts_server.is_some()
+                || tts_voice.is_some()
+                || tts_backend.is_some()
+                || tts_quality.is_some()
+                || tts_format.is_some()
+                || tts_sample_rate.is_some()
+                || tts_volume.is_some()
+                || tts_command.is_some()
+                || tts_args.is_some()
+                || ali_api_key.is_some()
+                || ali_model.is_some()
+                || ali_voice.is_some()
+                || ali_language_type.is_some();
+
+            println!("TTS:");
+            println!("  enabled_at_build: false");
+            if has_tts_settings {
+                println!("  note: configured but ignored; rebuild with --features tts to enable");
+            }
+        }
 
         println!("Auto Reply:");
         if let Some(auto_reply_config) = auto_reply {

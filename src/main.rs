@@ -7,6 +7,7 @@ use blivedm::client::get_cookies_or_browser;
 use blivedm::client::scheduler::{EventContext, Scheduler};
 use blivedm::client::websocket::BiliLiveClient;
 use blivedm::plugins::terminal_display::TerminalDisplayHandler;
+#[cfg(feature = "tts")]
 use blivedm::plugins::tts::TtsHandler;
 use blivedm::tui::{TuiApp, run_tui};
 use clap::{CommandFactory, Parser};
@@ -41,54 +42,67 @@ struct Args {
     #[arg(long, value_name = "ROOM_ID")]
     room_id: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// TTS REST API server URL
     #[arg(long, value_name = "URL")]
     tts_server: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// TTS voice ID (e.g., "zh-CN-XiaoxiaoNeural")
     #[arg(long, value_name = "VOICE")]
     tts_voice: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// TTS backend ("edge", "xtts", "piper")
     #[arg(long, value_name = "BACKEND")]
     tts_backend: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// TTS audio quality ("low", "medium", "high")
     #[arg(long, value_name = "QUALITY")]
     tts_quality: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// TTS audio format (e.g., "wav")
     #[arg(long, value_name = "FORMAT")]
     tts_format: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// TTS sample rate (e.g., 22050, 44100)
     #[arg(long, value_name = "RATE")]
     tts_sample_rate: Option<u32>,
 
+    #[cfg(feature = "tts")]
     /// TTS audio volume (0.0 to 1.0)
     #[arg(long, value_name = "VOLUME")]
     tts_volume: Option<f32>,
 
+    #[cfg(feature = "tts")]
     /// Local TTS command (e.g., "say", "espeak-ng")
     #[arg(long, value_name = "COMMAND")]
     tts_command: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// Comma-separated arguments for TTS command
     #[arg(long, value_name = "ARGS", allow_hyphen_values = true)]
     tts_args: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// Alibaba DashScope API key for ali-tts (can also use DASHSCOPE_API_KEY env)
     #[arg(long, value_name = "KEY")]
     ali_api_key: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// Alibaba TTS model (e.g., "qwen3-tts-flash")
     #[arg(long, value_name = "MODEL")]
     ali_model: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// Alibaba TTS voice (e.g., "Cherry", "Chelsie")
     #[arg(long, value_name = "VOICE")]
     ali_voice: Option<String>,
 
+    #[cfg(feature = "tts")]
     /// Alibaba TTS language type (e.g., "Chinese", "English")
     #[arg(long, value_name = "LANG")]
     ali_language_type: Option<String>,
@@ -159,51 +173,106 @@ fn main() {
         .unwrap_or_else(|| "24779526".to_string());
 
     // Configure TTS with precedence: CLI args > config file
+    #[cfg(feature = "tts")]
     let tts_server = args
         .tts_server
         .or_else(|| config.tts.as_ref().and_then(|t| t.server.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_server = config.tts.as_ref().and_then(|t| t.server.clone());
+
+    #[cfg(feature = "tts")]
     let tts_voice = args
         .tts_voice
         .or_else(|| config.tts.as_ref().and_then(|t| t.voice.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_voice = config.tts.as_ref().and_then(|t| t.voice.clone());
+
+    #[cfg(feature = "tts")]
     let tts_backend = args
         .tts_backend
         .or_else(|| config.tts.as_ref().and_then(|t| t.backend.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_backend = config.tts.as_ref().and_then(|t| t.backend.clone());
+
+    #[cfg(feature = "tts")]
     let tts_quality = args
         .tts_quality
         .or_else(|| config.tts.as_ref().and_then(|t| t.quality.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_quality = config.tts.as_ref().and_then(|t| t.quality.clone());
+
+    #[cfg(feature = "tts")]
     let tts_format = args
         .tts_format
         .or_else(|| config.tts.as_ref().and_then(|t| t.format.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_format = config.tts.as_ref().and_then(|t| t.format.clone());
+
+    #[cfg(feature = "tts")]
     let tts_sample_rate = args
         .tts_sample_rate
         .or_else(|| config.tts.as_ref().and_then(|t| t.sample_rate));
+    #[cfg(not(feature = "tts"))]
+    let tts_sample_rate = config.tts.as_ref().and_then(|t| t.sample_rate);
+
+    #[cfg(feature = "tts")]
     let tts_volume = args
         .tts_volume
         .or_else(|| config.tts.as_ref().and_then(|t| t.volume));
+    #[cfg(not(feature = "tts"))]
+    let tts_volume = config.tts.as_ref().and_then(|t| t.volume);
+
+    #[cfg(feature = "tts")]
     let tts_command = args
         .tts_command
         .or_else(|| config.tts.as_ref().and_then(|t| t.command.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_command = config.tts.as_ref().and_then(|t| t.command.clone());
+
+    #[cfg(feature = "tts")]
     let tts_args = args
         .tts_args
         .or_else(|| config.tts.as_ref().and_then(|t| t.args.clone()));
+    #[cfg(not(feature = "tts"))]
+    let tts_args = config.tts.as_ref().and_then(|t| t.args.clone());
 
     // Configure Alibaba TTS with precedence: CLI args > env vars > config file
+    #[cfg(feature = "tts")]
     let ali_api_key = args
         .ali_api_key
         .or_else(|| env::var("DASHSCOPE_API_KEY").ok())
         .or_else(|| config.tts.as_ref().and_then(|t| t.ali_api_key.clone()));
+    #[cfg(not(feature = "tts"))]
+    let ali_api_key = env::var("DASHSCOPE_API_KEY")
+        .ok()
+        .or_else(|| config.tts.as_ref().and_then(|t| t.ali_api_key.clone()));
+
+    #[cfg(feature = "tts")]
     let ali_model = args
         .ali_model
         .or_else(|| config.tts.as_ref().and_then(|t| t.ali_model.clone()));
+    #[cfg(not(feature = "tts"))]
+    let ali_model = config.tts.as_ref().and_then(|t| t.ali_model.clone());
+
+    #[cfg(feature = "tts")]
     let ali_voice = args
         .ali_voice
         .or_else(|| config.tts.as_ref().and_then(|t| t.ali_voice.clone()));
+    #[cfg(not(feature = "tts"))]
+    let ali_voice = config.tts.as_ref().and_then(|t| t.ali_voice.clone());
+
+    #[cfg(feature = "tts")]
     let ali_language_type = args.ali_language_type.or_else(|| {
         config
             .tts
             .as_ref()
             .and_then(|t| t.ali_language_type.clone())
     });
+    #[cfg(not(feature = "tts"))]
+    let ali_language_type = config
+        .tts
+        .as_ref()
+        .and_then(|t| t.ali_language_type.clone());
 
     // Configure auto reply with precedence: CLI args > config file
     let auto_reply_config = if let Some(config_auto_reply) = &config.auto_reply {
@@ -352,6 +421,7 @@ fn main() {
         Arc::clone(&online_count),
     ));
     scheduler.add_sequential_handler(terminal_handler);
+    #[cfg(feature = "tts")]
     if let Some(server_url) = tts_server {
         // REST API TTS configuration
         let tts_handler = Arc::new(TtsHandler::new_rest_api_with_volume(
@@ -392,6 +462,12 @@ fn main() {
     } else {
         println!(
             "No TTS configuration provided. Use --ali-api-key, --tts-server, or --tts-command to enable TTS."
+        );
+    }
+    #[cfg(not(feature = "tts"))]
+    if config.tts.is_some() {
+        println!(
+            "TTS support is disabled at compile time. Rebuild with --features tts to enable it."
         );
     }
 
