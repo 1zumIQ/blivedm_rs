@@ -87,11 +87,14 @@ pub enum CoinType {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[serde(default)]
 pub struct GiftSenderUserInfo {
+    pub base: Option<UserBase>,
     pub medal: Option<Medal>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[serde(default)]
 pub struct GiftData {
     #[serde(rename = "giftName")]
     pub gift_name: String,
@@ -119,6 +122,7 @@ pub struct Medal {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(default)]
 pub struct DanmuUser {
     pub uid: u64,
     pub base: UserBase,
@@ -144,6 +148,7 @@ impl Display for DanmuUser {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(default)]
 pub struct UserBase {
     pub name: String,
 }
