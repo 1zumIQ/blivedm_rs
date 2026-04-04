@@ -5,7 +5,7 @@ use native_tls::TlsStream;
 use serde_json::Value;
 use std::net::TcpStream;
 use std::panic;
-use tungstenite::{client, Message, WebSocket};
+use tungstenite::{Message, WebSocket, client};
 
 use url::Url;
 
@@ -237,7 +237,10 @@ impl BiliLiveClient {
                                     auth_err, heartbeat_err
                                 ),
                                 (Some(auth_err), None) => {
-                                    format!("reconnected socket but auth resend failed: {}", auth_err)
+                                    format!(
+                                        "reconnected socket but auth resend failed: {}",
+                                        auth_err
+                                    )
                                 }
                                 (None, Some(heartbeat_err)) => format!(
                                     "reconnected socket but heartbeat resend failed: {}",
